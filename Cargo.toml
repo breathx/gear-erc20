@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "app", "wasm",
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["breathx <novikov.dm.al@gmail.com>"]
+edition = "2021"
+license = "GPL-3.0"
+
+[workspace.dependencies]
+gstd = "1.1.1"
+gtest = "1.1.1"
+gwasm-builder = { package = "gear-wasm-builder", version = "1.1.1" }
+parity-scale-codec = { version = "3.6", default-features = false }
+sails-clientgen = { git = "https://github.com/gear-tech/sails" }
+sails-exec-context-gstd = { git = "https://github.com/gear-tech/sails" }
+sails-idl-meta ={ git = "https://github.com/gear-tech/sails" }
+sails-idlgen = { git = "https://github.com/gear-tech/sails" }
+sails-idlparser = { git = "https://github.com/gear-tech/sails" }
+sails = { git = "https://github.com/gear-tech/sails" }
+sails-rtl = { git = "https://github.com/gear-tech/sails" }
+sails-sender = { git = "https://github.com/gear-tech/sails" }
+sails-macros =  { git = "https://github.com/gear-tech/sails" }
+scale-info = { version = "2.10", default-features = false }
+primitive-types = { version = "*", default-features = false }
+derive-more = { version = "*", default-features = false, features = ["display"] }
+log = "*"
+env_logger = "*"
+serde = "1.0"
+serde-json = { package = "serde_json", version = "1.0" }
+syn = "2.0"
+thiserror = "1.0"
+tokio = "1.36"
+trybuild = "1"

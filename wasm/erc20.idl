@@ -1,0 +1,24 @@
+type ActorId = struct {
+  [u8, 32],
+};
+
+type U256 = struct {
+  [u64, 4],
+};
+
+constructor {
+  New : (name: str, symbol: str, decimals: u8);
+};
+
+service {
+  Approve : (spender: ActorId, value: U256) -> bool;
+  FromTransfer : (from: ActorId, to: ActorId, value: U256) -> bool;
+  SetBalance : (new_balance: U256) -> bool;
+  Transfer : (to: ActorId, value: U256) -> bool;
+  query Allowance : (owner: ActorId, spender: ActorId) -> U256;
+  query BalanceOf : (owner: ActorId) -> U256;
+  query Decimals : () -> u8;
+  query Name : () -> str;
+  query Symbol : () -> str;
+  query TotalSupply : () -> U256;
+}
