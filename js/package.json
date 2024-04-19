@@ -1,0 +1,20 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@gear-js/api": "^0.37.2",
+    "@polkadot/api": "^10.13.1",
+    "sails-js": "^0.0.9"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "generate": "sails-js generate ../wasm/erc20.idl -o src -n ERC20",
+    "start": "ts-node-esm src/main.ts"
+  }
+}
