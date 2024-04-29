@@ -1,72 +1,88 @@
+// TODO (breathx): replace sails_rtl::ActorId with gstd's one.
 #![allow(clippy::unused_unit)]
 
-mod internal;
-mod storage;
-
-pub use internal::*;
-
-use self::storage::{
-    allowances::AllowancesStorage, balances::BalancesStorage, meta::MetaStorage,
-    total_supply::TotalSupplyStorage,
-};
-use core::{cmp::Ordering, fmt::Debug};
+use crate::services;
+use core::{cmp::Ordering, fmt::Debug, marker::PhantomData};
 use gstd::{ext, format, msg, ActorId, Decode, Encode, String, TypeInfo, Vec};
 use primitive_types::U256;
 use sails_macros::gservice;
-use sails_rtl::gstd::events::EventTrigger;
+use sails_rtl::gstd::events::{EventTrigger, GStdEventTrigger};
+use storage::{AllowancesStorage, BalancesStorage, MetaStorage, TotalSupplyStorage};
 
-pub struct Service<X> {
-    informer: X,
+pub use utils::*;
+
+pub mod funcs;
+pub mod storage;
+pub(crate) mod utils;
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, TypeInfo)]
+pub enum Event {
+    Approval {
+        owner: sails_rtl::ActorId,
+        spender: sails_rtl::ActorId,
+        value: U256,
+    },
+    Transfer {
+        from: sails_rtl::ActorId,
+        to: sails_rtl::ActorId,
+        // TODO (breathx and team): use or not to use `NonZeroU256`?
+        value: U256,
+    },
 }
 
+pub type GstdDrivenService = Service<GStdEventTrigger<Event>>;
+
+// TODO (sails): isn't services - modules?
+#[derive(Clone)]
+pub struct Service<X>(PhantomData<X>);
+
 impl<X> Service<X> {
-    pub fn seed(name: String, symbol: String, decimals: u8) {
+    pub fn seed(name: String, symbol: String, decimals: u8) -> Self {
         let _res = AllowancesStorage::default();
         debug_assert!(_res.is_ok());
 
         let _res = BalancesStorage::default();
         debug_assert!(_res.is_ok());
 
-        let _res = MetaStorage::set(name, symbol, decimals);
+        let _res = MetaStorage::with_data(name, symbol, decimals);
         debug_assert!(_res.is_ok());
-    }
-}
 
-impl<X: EventTrigger<Event>> Service<X> {
-    pub fn deposit_event(&self, e: Event) {
-        // TODO (sails): rename to `deposit_event`
-        // TODO (sails): make infallible or something?
-        if self.informer.trigger(e).is_err() {
-            panic("Failed to deposit event");
-        }
+        let _res = TotalSupplyStorage::default();
+        debug_assert!(_res.is_ok());
+
+        Self(PhantomData)
     }
 }
 
 // TODO (sails): consider renaming `EventTrigger` -> `Notifier`/`Informer`.
 // TODO (sails): fix that requires `Encode`, `Decode`, `TypeInfo` and `Vec` in scope.
-// TODO (sails): fix that requires explicit `-> ()`.
+// TODO (sails): fix that requires explicit `-> ()`. ALREADY EXISTS
 // TODO (sails): let me specify error as subset of strings (Display of my Error) -> thats common flow for us.
-// TODO (sails): fix bug with unreachable names.
 // TODO (sails): gstd::ActorId, primitive_types::H256/U256, [u8; 32], NonZeroStuff are primitives!.
+// TODO (sails): gservice(events = Event, error = Error)
+// #[gservice(events = Event, error = Error)]
 #[gservice]
-impl<X: EventTrigger<Event>> Service<X> {
+impl<X> Service<X>
+where
+    X: EventTrigger<Event>,
+{
     // TODO (sails): hide this into macro.
-    pub fn new(informer: X) -> Self {
-        Self { informer }
+    pub fn new() -> Self {
+        Self(PhantomData)
     }
 
-    pub fn allowance(&self, owner: ActorId, spender: ActorId) -> U256 {
-        allowance(AllowancesStorage::get(), owner, spender)
+    pub fn allowance(&self, owner: sails_rtl::ActorId, spender: sails_rtl::ActorId) -> U256 {
+        funcs::allowance(AllowancesStorage::as_ref(), owner.into(), spender.into())
     }
 
-    pub fn approve(&mut self, spender: ActorId, value: U256) -> bool {
+    pub fn approve(&mut self, spender: sails_rtl::ActorId, value: U256) -> bool {
         let owner = msg::source();
 
-        let mutated = approve(AllowancesStorage::get_mut(), owner, spender, value);
+        let mutated = funcs::approve(AllowancesStorage::as_mut(), owner, spender.into(), value);
 
         if mutated {
-            self.deposit_event(Event::Approval {
-                owner,
+            services::utils::deposit_event(Event::Approval {
+                owner: owner.into(),
                 spender,
                 value,
             })
@@ -75,8 +91,8 @@ impl<X: EventTrigger<Event>> Service<X> {
         mutated
     }
 
-    pub fn balance_of(&self, owner: ActorId) -> U256 {
-        balance_of(BalancesStorage::get(), owner)
+    pub fn balance_of(&self, owner: sails_rtl::ActorId) -> U256 {
+        funcs::balance_of(BalancesStorage::as_ref(), owner.into())
     }
 
     pub fn decimals(&self) -> u8 {
@@ -96,43 +112,54 @@ impl<X: EventTrigger<Event>> Service<X> {
         TotalSupplyStorage::get()
     }
 
-    pub fn transfer(&mut self, to: ActorId, value: U256) -> bool {
+    pub fn transfer(&mut self, to: sails_rtl::ActorId, value: U256) -> bool {
         let from = msg::source();
 
-        let mutated = panicking(move || transfer(BalancesStorage::get_mut(), from, to, value));
+        let mutated = services::utils::panicking(move || {
+            funcs::transfer(BalancesStorage::as_mut(), from, to.into(), value)
+        });
 
         if mutated {
-            let value = value
-                .try_into()
-                .expect("Infallible since `transfer` executed successfully");
+            // let value = value
+            //     .try_into()
+            //     .expect("Infallible since `transfer` executed successfully");
 
-            self.deposit_event(Event::Transfer { from, to, value })
+            services::utils::deposit_event(Event::Transfer {
+                from: from.into(),
+                to,
+                value,
+            })
         }
 
         mutated
     }
 
     // TODO (breathx): rename me once bug in sails fixed.
-    pub fn from_transfer(&mut self, from: ActorId, to: ActorId, value: U256) -> bool {
+    pub fn transfer_from(
+        &mut self,
+        from: sails_rtl::ActorId,
+        to: sails_rtl::ActorId,
+        value: U256,
+    ) -> bool {
         let spender = msg::source();
 
-        let mutated = panicking(move || {
-            transfer_from(
-                AllowancesStorage::get_mut(),
-                BalancesStorage::get_mut(),
+        let mutated = services::utils::panicking(move || {
+            funcs::transfer_from(
+                AllowancesStorage::as_mut(),
+                BalancesStorage::as_mut(),
                 spender,
-                from,
-                to,
+                from.into(),
+                to.into(),
                 value,
             )
         });
 
         if mutated {
-            let value = value
-                .try_into()
-                .expect("Infallible since `transfer_from` executed successfully");
+            // let value = value
+            //     .try_into()
+            //     .expect("Infallible since `transfer_from` executed successfully");
 
-            self.deposit_event(Event::Transfer { from, to, value })
+            services::utils::deposit_event(Event::Transfer { from, to, value })
         }
 
         mutated
@@ -142,7 +169,7 @@ impl<X: EventTrigger<Event>> Service<X> {
     pub fn set_balance(&mut self, new_balance: U256) -> bool {
         let owner = msg::source();
 
-        let balance = balance_of(BalancesStorage::get(), owner);
+        let balance = funcs::balance_of(BalancesStorage::as_ref(), owner);
 
         let new_total_supply = match balance.cmp(&new_balance) {
             Ordering::Greater => TotalSupplyStorage::get().saturating_sub(balance - new_balance),
@@ -154,20 +181,9 @@ impl<X: EventTrigger<Event>> Service<X> {
             .try_into()
             .expect("Infallible since NonZero b/c new_balance != balance");
 
-        BalancesStorage::get_mut().insert(owner, non_zero_new_balance);
-        *TotalSupplyStorage::get_mut() = new_total_supply;
+        BalancesStorage::as_mut().insert(owner, non_zero_new_balance);
+        *TotalSupplyStorage::as_mut() = new_total_supply;
 
         true
     }
-}
-
-fn panicking<T, F: FnOnce() -> Result<T, Error>>(f: F) -> T {
-    match f() {
-        Ok(v) => v,
-        Err(e) => panic(e),
-    }
-}
-
-fn panic(err: impl Debug) -> ! {
-    ext::panic(&format!("{err:?}"))
 }

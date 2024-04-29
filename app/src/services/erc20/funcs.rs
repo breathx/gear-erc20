@@ -1,32 +1,6 @@
-pub use utils::*;
-
-pub type AllowancesMap = HashMap<(ActorId, ActorId), NonZeroU256>;
-pub type BalancesMap = HashMap<ActorId, NonZeroU256>;
-pub type Result<T, E = Error> = core::result::Result<T, E>;
-
-use gstd::{collections::HashMap, prelude::*, ActorId};
+use super::utils::{Result, *};
+use gstd::{prelude::*, ActorId};
 use primitive_types::U256;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, TypeInfo)]
-pub enum Event {
-    Approval {
-        owner: ActorId,
-        spender: ActorId,
-        value: U256,
-    },
-    Transfer {
-        from: ActorId,
-        to: ActorId,
-        value: NonZeroU256,
-    },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode, TypeInfo)]
-pub enum Error {
-    InsufficientAllowance,
-    InsufficientBalance,
-    NumericOverflow,
-}
 
 pub fn allowance(allowances: &AllowancesMap, owner: ActorId, spender: ActorId) -> U256 {
     allowances
@@ -132,32 +106,6 @@ pub fn transfer_from(
     Ok(true)
 }
 
-mod utils {
-    use super::*;
-
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Decode, Encode, TypeInfo)]
-    pub struct NonZeroU256(U256);
-
-    impl TryFrom<U256> for NonZeroU256 {
-        type Error = TryFromU256Error;
-
-        fn try_from(value: U256) -> Result<Self, Self::Error> {
-            (!value.is_zero())
-                .then_some(NonZeroU256(value))
-                .ok_or(TryFromU256Error(()))
-        }
-    }
-
-    impl From<NonZeroU256> for U256 {
-        fn from(value: NonZeroU256) -> Self {
-            value.0
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct TryFromU256Error(());
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,14 +136,14 @@ mod tests {
         // Approve is returned if exists.
         {
             assert!(map.contains_key(&(alice(), bob())));
-            assert_eq!(super::allowance(&map, alice(), bob()), U256::exp10(42));
+            assert_eq!(funcs::allowance(&map, alice(), bob()), U256::exp10(42));
         }
 
         // # Test case #2.
         // U256::zero() is returned if not exists.
         {
             assert!(!map.contains_key(&(bob(), alice())));
-            assert!(super::allowance(&map, bob(), alice()).is_zero());
+            assert!(funcs::allowance(&map, bob(), alice()).is_zero());
         }
     }
 
@@ -211,49 +159,49 @@ mod tests {
         // # Test case #1.
         // Allowance from Alice to Bob doesn't exist and created.
         {
-            assert!(super::approve(&mut map, alice(), bob(), U256::exp10(42)));
-            assert_eq!(super::allowance(&map, alice(), bob()), U256::exp10(42));
+            assert!(funcs::approve(&mut map, alice(), bob(), U256::exp10(42)));
+            assert_eq!(funcs::allowance(&map, alice(), bob()), U256::exp10(42));
         }
 
         // # Test case #2.
         // Allowance from Alice to Bob exist and changed.
         {
-            assert!(super::approve(&mut map, alice(), bob(), U256::exp10(24)));
-            assert_eq!(super::allowance(&map, alice(), bob()), U256::exp10(24));
+            assert!(funcs::approve(&mut map, alice(), bob(), U256::exp10(24)));
+            assert_eq!(funcs::allowance(&map, alice(), bob()), U256::exp10(24));
         }
 
         // # Test case #3.
         // Allowance from Alice to Bob exists and not changed.
         {
-            assert!(!super::approve(&mut map, alice(), bob(), U256::exp10(24)));
-            assert_eq!(super::allowance(&map, alice(), bob()), U256::exp10(24));
+            assert!(!funcs::approve(&mut map, alice(), bob(), U256::exp10(24)));
+            assert_eq!(funcs::allowance(&map, alice(), bob()), U256::exp10(24));
         }
 
         // # Test case #4.
         // Allowance from Alice to Bob exists and removed.
         {
-            assert!(super::approve(&mut map, alice(), bob(), U256::zero()));
-            assert!(super::allowance(&map, alice(), bob()).is_zero());
+            assert!(funcs::approve(&mut map, alice(), bob(), U256::zero()));
+            assert!(funcs::allowance(&map, alice(), bob()).is_zero());
         }
 
         // # Test case #5.
         // Allowance from Alice to Bob doesn't exists and not created.
         {
-            assert!(!super::approve(&mut map, alice(), bob(), U256::zero()));
-            assert!(super::allowance(&map, alice(), bob()).is_zero());
+            assert!(!funcs::approve(&mut map, alice(), bob(), U256::zero()));
+            assert!(funcs::allowance(&map, alice(), bob()).is_zero());
         }
 
         // # Test case #6.
         // Allowance is always noop on owner == spender.
         {
-            assert!(!super::approve(&mut map, alice(), alice(), U256::exp10(42)));
-            assert!(super::allowance(&map, alice(), alice()).is_zero());
+            assert!(!funcs::approve(&mut map, alice(), alice(), U256::exp10(42)));
+            assert!(funcs::allowance(&map, alice(), alice()).is_zero());
 
-            assert!(!super::approve(&mut map, alice(), alice(), U256::exp10(24)));
-            assert!(super::allowance(&map, alice(), alice()).is_zero());
+            assert!(!funcs::approve(&mut map, alice(), alice(), U256::exp10(24)));
+            assert!(funcs::allowance(&map, alice(), alice()).is_zero());
 
-            assert!(!super::approve(&mut map, alice(), alice(), U256::zero()));
-            assert!(super::allowance(&map, alice(), alice()).is_zero());
+            assert!(!funcs::approve(&mut map, alice(), alice(), U256::zero()));
+            assert!(funcs::allowance(&map, alice(), alice()).is_zero());
         }
     }
 
@@ -269,14 +217,14 @@ mod tests {
         // Balance is returned if exists.
         {
             assert!(map.contains_key(&alice()));
-            assert_eq!(super::balance_of(&map, alice()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&map, alice()), U256::exp10(42));
         }
 
         // # Test case #2.
         // U256::zero() is returned if not exists.
         {
             assert!(!map.contains_key(&bob()));
-            assert!(super::balance_of(&map, bob()).is_zero());
+            assert!(funcs::balance_of(&map, bob()).is_zero());
         }
     }
 
@@ -291,62 +239,62 @@ mod tests {
         // # Test case #1.
         // Alice transfers to Bob, when Alice has no balance.
         {
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
 
             assert_err!(
-                super::transfer(&mut map, alice(), bob(), U256::exp10(20)),
+                funcs::transfer(&mut map, alice(), bob(), U256::exp10(20)),
                 Error::InsufficientBalance
             );
 
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
         }
 
         // # Test case #2.
         // Bob transfers to Alice, when Bob's balance is less than required.
         {
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
 
             assert_err!(
-                super::transfer(&mut map, bob(), alice(), U256::exp10(50)),
+                funcs::transfer(&mut map, bob(), alice(), U256::exp10(50)),
                 Error::InsufficientBalance
             );
 
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
         }
 
         // # Test case #3.
         // Dave transfers to Bob, causing numeric overflow.
         {
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
-            assert_eq!(super::balance_of(&map, dave()), U256::MAX);
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&map, dave()), U256::MAX);
 
             assert_err!(
-                super::transfer(&mut map, dave(), bob(), U256::MAX),
+                funcs::transfer(&mut map, dave(), bob(), U256::MAX),
                 Error::NumericOverflow
             );
 
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
-            assert_eq!(super::balance_of(&map, dave()), U256::MAX);
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&map, dave()), U256::MAX);
         }
 
         // # Test case #4.
         // Bob transfers to Alice, when Alice's account doesn't exist.
         {
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, bob()), U256::exp10(42));
 
             assert_ok!(
-                super::transfer(&mut map, bob(), alice(), U256::exp10(10)),
+                funcs::transfer(&mut map, bob(), alice(), U256::exp10(10)),
                 true
             );
 
-            assert_eq!(super::balance_of(&map, alice()), U256::exp10(10));
+            assert_eq!(funcs::balance_of(&map, alice()), U256::exp10(10));
             assert_eq!(
-                super::balance_of(&map, bob()),
+                funcs::balance_of(&map, bob()),
                 U256::exp10(42) - U256::exp10(10)
             );
         }
@@ -354,23 +302,23 @@ mod tests {
         // # Test case #5.
         // Bob transfers to Alice, when Alice's account exists.
         {
-            assert_eq!(super::balance_of(&map, alice()), U256::exp10(10));
+            assert_eq!(funcs::balance_of(&map, alice()), U256::exp10(10));
             assert_eq!(
-                super::balance_of(&map, bob()),
+                funcs::balance_of(&map, bob()),
                 U256::exp10(42) - U256::exp10(10)
             );
 
             assert_ok!(
-                super::transfer(&mut map, bob(), alice(), U256::exp10(10)),
+                funcs::transfer(&mut map, bob(), alice(), U256::exp10(10)),
                 true
             );
 
             assert_eq!(
-                super::balance_of(&map, alice()),
+                funcs::balance_of(&map, alice()),
                 U256::exp10(10).saturating_mul(2.into())
             );
             assert_eq!(
-                super::balance_of(&map, bob()),
+                funcs::balance_of(&map, bob()),
                 U256::exp10(42) - U256::exp10(10).saturating_mul(2.into())
             );
         }
@@ -379,16 +327,16 @@ mod tests {
         // Bob transfers to Alice, when Alice's account exists and Bob's is removed.
         {
             assert_eq!(
-                super::balance_of(&map, alice()),
+                funcs::balance_of(&map, alice()),
                 U256::exp10(10).saturating_mul(2.into())
             );
             assert_eq!(
-                super::balance_of(&map, bob()),
+                funcs::balance_of(&map, bob()),
                 U256::exp10(42) - U256::exp10(10).saturating_mul(2.into())
             );
 
             assert_ok!(
-                super::transfer(
+                funcs::transfer(
                     &mut map,
                     bob(),
                     alice(),
@@ -397,62 +345,62 @@ mod tests {
                 true
             );
 
-            assert_eq!(super::balance_of(&map, alice()), U256::exp10(42));
-            assert!(super::balance_of(&map, bob()).is_zero());
+            assert_eq!(funcs::balance_of(&map, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, bob()).is_zero());
         }
 
         // # Test case #7.
         // Alice transfers to Charlie, when Alice's account is removed and Charlie's is created.
         {
-            assert_eq!(super::balance_of(&map, alice()), U256::exp10(42));
-            assert!(super::balance_of(&map, charlie()).is_zero());
+            assert_eq!(funcs::balance_of(&map, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, charlie()).is_zero());
 
             assert_ok!(
-                super::transfer(&mut map, alice(), charlie(), U256::exp10(42)),
+                funcs::transfer(&mut map, alice(), charlie(), U256::exp10(42)),
                 true
             );
 
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
         }
 
         // # Test case #8.
         // Transfer is always noop when from == to.
         {
-            assert!(super::balance_of(&map, alice()).is_zero());
+            assert!(funcs::balance_of(&map, alice()).is_zero());
             assert_ok!(
-                super::transfer(&mut map, alice(), alice(), U256::exp10(42)),
+                funcs::transfer(&mut map, alice(), alice(), U256::exp10(42)),
                 false
             );
-            assert!(super::balance_of(&map, alice()).is_zero());
+            assert!(funcs::balance_of(&map, alice()).is_zero());
 
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
             assert_ok!(
-                super::transfer(&mut map, charlie(), charlie(), U256::exp10(42)),
+                funcs::transfer(&mut map, charlie(), charlie(), U256::exp10(42)),
                 false
             );
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
         }
 
         // # Test case #9.
         // Transfer is always noop when value is zero.
         {
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
 
             assert_ok!(
-                super::transfer(&mut map, alice(), charlie(), U256::zero()),
+                funcs::transfer(&mut map, alice(), charlie(), U256::zero()),
                 false
             );
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
 
             assert_ok!(
-                super::transfer(&mut map, charlie(), alice(), U256::zero()),
+                funcs::transfer(&mut map, charlie(), alice(), U256::zero()),
                 false
             );
-            assert!(super::balance_of(&map, alice()).is_zero());
-            assert_eq!(super::balance_of(&map, charlie()), U256::exp10(42));
+            assert!(funcs::balance_of(&map, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&map, charlie()), U256::exp10(42));
         }
     }
 
@@ -474,37 +422,37 @@ mod tests {
         // With zero value nothing's changed.
         {
             assert_ok!(
-                super::transfer_from(&mut amap, &mut bmap, bob(), bob(), alice(), U256::zero()),
+                funcs::transfer_from(&mut amap, &mut bmap, bob(), bob(), alice(), U256::zero()),
                 false
             );
-            assert!(super::balance_of(&bmap, alice()).is_zero());
-            assert_eq!(super::balance_of(&bmap, bob()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, alice()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, bob()), U256::exp10(42));
         }
 
         // # Test case #2.
         // Bob doesn't need approve to transfer from self to Alice.
         {
             assert_ok!(
-                super::transfer_from(&mut amap, &mut bmap, bob(), bob(), alice(), U256::exp10(42)),
+                funcs::transfer_from(&mut amap, &mut bmap, bob(), bob(), alice(), U256::exp10(42)),
                 true
             );
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
         }
 
         // # Test case #3.
         // Noop on self transfer with self approve.
         {
-            assert!(super::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
             assert_ok!(
-                super::transfer_from(&mut amap, &mut bmap, bob(), bob(), bob(), U256::exp10(42)),
+                funcs::transfer_from(&mut amap, &mut bmap, bob(), bob(), bob(), U256::exp10(42)),
                 false
             );
-            assert!(super::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
 
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
             assert_ok!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     alice(),
@@ -514,18 +462,18 @@ mod tests {
                 ),
                 false
             );
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
         }
 
         // # Test case #4.
         // Bob tries to perform transfer from Alice to Charlie with no approval exists.
         {
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
 
             assert_err!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     bob(),
@@ -536,22 +484,22 @@ mod tests {
                 Error::InsufficientAllowance,
             );
 
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
         }
 
         // # Test case #5.
         // Bob tries to perform transfer from Alice to Charlie with insufficient approval.
         {
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
 
-            assert!(super::approve(&mut amap, alice(), bob(), U256::exp10(19)));
+            assert!(funcs::approve(&mut amap, alice(), bob(), U256::exp10(19)));
 
             assert_err!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     bob(),
@@ -562,19 +510,19 @@ mod tests {
                 Error::InsufficientAllowance,
             );
 
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
-            assert_eq!(super::allowance(&amap, alice(), bob()), U256::exp10(19));
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
+            assert_eq!(funcs::allowance(&amap, alice(), bob()), U256::exp10(19));
         }
 
         // # Test case #6.
         // Bob tries to perform transfer from Alice to Charlie with insufficient balance.
         {
-            assert!(super::approve(&mut amap, alice(), bob(), U256::MAX));
+            assert!(funcs::approve(&mut amap, alice(), bob(), U256::MAX));
 
             assert_err!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     bob(),
@@ -585,9 +533,9 @@ mod tests {
                 Error::InsufficientBalance,
             );
 
-            assert_eq!(super::balance_of(&bmap, alice()), U256::exp10(42));
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, alice()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
         }
 
         // * `Ok(true)` when allowance is changed
@@ -597,7 +545,7 @@ mod tests {
         // Bob performs transfer from Alice to Charlie and allowance is changed.
         {
             assert_ok!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     bob(),
@@ -608,11 +556,11 @@ mod tests {
                 true
             );
 
-            assert!(super::balance_of(&bmap, alice()).is_zero());
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert_eq!(super::balance_of(&bmap, charlie()), U256::exp10(42));
+            assert!(funcs::balance_of(&bmap, alice()).is_zero());
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert_eq!(funcs::balance_of(&bmap, charlie()), U256::exp10(42));
             assert_eq!(
-                super::allowance(&amap, alice(), bob()),
+                funcs::allowance(&amap, alice(), bob()),
                 U256::MAX - U256::exp10(42)
             );
         }
@@ -620,7 +568,7 @@ mod tests {
         // # Test case #8.
         // Alice performs transfer from Charlie to Dave and allowance is removed.
         {
-            assert!(super::approve(
+            assert!(funcs::approve(
                 &mut amap,
                 charlie(),
                 alice(),
@@ -628,7 +576,7 @@ mod tests {
             ));
 
             assert_ok!(
-                super::transfer_from(
+                funcs::transfer_from(
                     &mut amap,
                     &mut bmap,
                     alice(),
@@ -639,14 +587,14 @@ mod tests {
                 true
             );
 
-            assert!(super::balance_of(&bmap, alice()).is_zero());
-            assert!(super::balance_of(&bmap, bob()).is_zero());
-            assert!(super::balance_of(&bmap, charlie()).is_zero());
+            assert!(funcs::balance_of(&bmap, alice()).is_zero());
+            assert!(funcs::balance_of(&bmap, bob()).is_zero());
+            assert!(funcs::balance_of(&bmap, charlie()).is_zero());
             assert_eq!(
-                super::balance_of(&bmap, dave()),
+                funcs::balance_of(&bmap, dave()),
                 U256::exp10(42).saturating_mul(2.into())
             );
-            assert!(super::allowance(&amap, charlie().into(), alice()).is_zero());
+            assert!(funcs::allowance(&amap, charlie().into(), alice()).is_zero());
         }
     }
 

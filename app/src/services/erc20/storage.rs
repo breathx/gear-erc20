@@ -1,206 +1,74 @@
 // TODO (sails): impl such macro
+use super::utils::{AllowancesMap, BalancesMap};
+use gstd::String;
+use primitive_types::U256;
 
-use super::{AllowancesMap, BalancesMap};
+crate::declare_storage!(module: allowances, name: AllowancesStorage, ty: AllowancesMap);
 
-pub mod balances {
-    use super::*;
+impl AllowancesStorage {
+    pub fn with_capacity(capacity: usize) -> Result<(), AllowancesMap> {
+        Self::set(AllowancesMap::with_capacity(capacity))
+    }
 
-    pub struct BalancesStorage(());
-
-    static mut INSTANCE: Option<BalancesMap> = None;
-
-    impl BalancesStorage {
-        pub fn is_set() -> bool {
-            unsafe { INSTANCE.is_some() }
-        }
-
-        pub fn set(value: BalancesMap) -> Result<(), BalancesMap> {
-            if Self::is_set() {
-                Err(value)
-            } else {
-                unsafe { INSTANCE = Some(value) }
-                Ok(())
-            }
-        }
-
-        pub fn with_capacity(capacity: usize) -> Result<(), BalancesMap> {
-            Self::set(BalancesMap::with_capacity(capacity))
-        }
-
-        pub fn default() -> Result<(), BalancesMap> {
-            Self::with_capacity(u16::MAX as usize)
-        }
-
-        pub fn get() -> &'static BalancesMap {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_ref().expect("Infallible b/c set above") }
-        }
-
-        pub fn get_mut() -> &'static mut BalancesMap {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_mut().expect("Infallible b/c set above") }
-        }
+    pub fn default() -> Result<(), AllowancesMap> {
+        Self::with_capacity(u16::MAX as usize)
     }
 }
 
-pub mod allowances {
-    use super::*;
+crate::declare_storage!(module: balances, name: BalancesStorage, ty: BalancesMap);
 
-    pub struct AllowancesStorage(());
+impl BalancesStorage {
+    pub fn with_capacity(capacity: usize) -> Result<(), BalancesMap> {
+        Self::set(BalancesMap::with_capacity(capacity))
+    }
 
-    static mut INSTANCE: Option<AllowancesMap> = None;
-
-    impl AllowancesStorage {
-        pub fn is_set() -> bool {
-            unsafe { INSTANCE.is_some() }
-        }
-
-        pub fn set(value: AllowancesMap) -> Result<(), AllowancesMap> {
-            if Self::is_set() {
-                Err(value)
-            } else {
-                unsafe { INSTANCE = Some(value) }
-                Ok(())
-            }
-        }
-
-        pub fn with_capacity(capacity: usize) -> Result<(), AllowancesMap> {
-            Self::set(AllowancesMap::with_capacity(capacity))
-        }
-
-        pub fn default() -> Result<(), AllowancesMap> {
-            Self::with_capacity(u16::MAX as usize)
-        }
-
-        pub fn get() -> &'static AllowancesMap {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_ref().expect("Infallible b/c set above") }
-        }
-
-        pub fn get_mut() -> &'static mut AllowancesMap {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_mut().expect("Infallible b/c set above") }
-        }
+    pub fn default() -> Result<(), BalancesMap> {
+        Self::with_capacity(u16::MAX as usize)
     }
 }
 
-pub mod meta {
-    use gstd::String;
+pub struct Meta {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+}
 
-    pub struct MetaStorage(());
+crate::declare_storage!(module: meta, name: MetaStorage, ty: Meta);
 
-    pub struct Meta {
-        pub name: String,
-        pub symbol: String,
-        pub decimals: u8,
+impl MetaStorage {
+    pub fn with_data(name: String, symbol: String, decimals: u8) -> Result<(), Meta> {
+        Self::set(Meta {
+            name,
+            symbol,
+            decimals,
+        })
     }
 
-    static mut INSTANCE: Option<Meta> = None;
+    pub fn default() -> Result<(), Meta> {
+        Self::with_data(String::from("Vara Network"), String::from("VARA"), 12)
+    }
 
-    impl MetaStorage {
-        pub fn is_set() -> bool {
-            unsafe { INSTANCE.is_some() }
-        }
+    pub fn name() -> String {
+        Self::as_ref().name.clone()
+    }
 
-        pub fn set(name: String, symbol: String, decimals: u8) -> Result<(), Meta> {
-            let meta = Meta {
-                name,
-                symbol,
-                decimals,
-            };
+    pub fn symbol() -> String {
+        Self::as_ref().symbol.clone()
+    }
 
-            if Self::is_set() {
-                Err(meta)
-            } else {
-                unsafe { INSTANCE = Some(meta) }
-                Ok(())
-            }
-        }
-
-        pub fn default() -> Result<(), Meta> {
-            Self::set(String::from("Vara Network"), String::from("VARA"), 12)
-        }
-
-        pub fn get() -> &'static Meta {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_ref().expect("Infallible b/c set above") }
-        }
-
-        pub fn name() -> String {
-            Self::get().name.clone()
-        }
-
-        pub fn symbol() -> String {
-            Self::get().symbol.clone()
-        }
-
-        pub fn decimals() -> u8 {
-            Self::get().decimals
-        }
+    pub fn decimals() -> u8 {
+        Self::as_ref().decimals
     }
 }
 
-pub mod total_supply {
-    use primitive_types::U256;
+crate::declare_storage!(module: total_supply, name: TotalSupplyStorage, ty: U256);
 
-    pub struct TotalSupplyStorage(());
+impl TotalSupplyStorage {
+    pub fn default() -> Result<(), U256> {
+        Self::set(U256::zero())
+    }
 
-    static mut INSTANCE: Option<U256> = None;
-
-    impl TotalSupplyStorage {
-        pub fn is_set() -> bool {
-            unsafe { INSTANCE.is_some() }
-        }
-
-        pub fn set(value: U256) -> Result<(), U256> {
-            if Self::is_set() {
-                Err(value)
-            } else {
-                unsafe { INSTANCE = Some(value) }
-                Ok(())
-            }
-        }
-
-        pub fn default() -> Result<(), U256> {
-            Self::set(U256::zero())
-        }
-
-        pub fn get() -> U256 {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { *INSTANCE.as_ref().expect("Infallible b/c set above") }
-        }
-
-        pub fn get_mut() -> &'static mut U256 {
-            if !Self::is_set() {
-                let _res = Self::default();
-                debug_assert!(_res.is_ok());
-            }
-
-            unsafe { INSTANCE.as_mut().expect("Infallible b/c set above") }
-        }
+    pub fn get() -> U256 {
+        *Self::as_ref()
     }
 }
