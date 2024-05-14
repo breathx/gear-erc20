@@ -8,7 +8,7 @@ pub enum Error {
     NumericOverflow,
     MaxSupplyReached,
     InsufficientBalance,
-    Underflow
+    Underflow,
 }
 
 #[derive(Debug, Encode, Decode, TypeInfo)]

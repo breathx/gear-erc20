@@ -136,7 +136,12 @@ where
             .ensure_has_role::<FungibleBurner>(msg::source());
 
         let mutated = services::utils::panicking(|| {
-            funcs::burn(BalancesStorage::as_mut(), TotalSupplyStorage::as_mut(), from.into(), value)
+            funcs::burn(
+                BalancesStorage::as_mut(),
+                TotalSupplyStorage::as_mut(),
+                from.into(),
+                value,
+            )
         });
 
         if mutated {

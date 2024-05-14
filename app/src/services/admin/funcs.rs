@@ -40,13 +40,16 @@ pub fn mint(
     Ok(true)
 }
 
-pub fn burn(balances: &mut BalancesMap, total_supply: &mut U256, from: ActorId, value: U256) -> Result<bool> {
+pub fn burn(
+    balances: &mut BalancesMap,
+    total_supply: &mut U256,
+    from: ActorId,
+    value: U256,
+) -> Result<bool> {
     if value.is_zero() {
         return Ok(false);
     }
-    let new_total_supply = total_supply
-        .checked_sub(value)
-        .ok_or(Error::Underflow)?;
+    let new_total_supply = total_supply.checked_sub(value).ok_or(Error::Underflow)?;
 
     let new_from = funcs::balance_of(balances, from)
         .checked_sub(value)
@@ -225,7 +228,10 @@ mod tests {
         // # Test case #1.
         // Successful Burn
         {
-            assert_ok!(funcs::burn(&mut map,&mut total_supply, dave(), value), true);
+            assert_ok!(
+                funcs::burn(&mut map, &mut total_supply, dave(), value),
+                true
+            );
             let expected_balance: NonZeroU256 = (U256::MAX - value).try_into().unwrap();
             assert_eq!(*map.get(&dave()).unwrap(), expected_balance);
             assert_eq!(total_supply, 0.into());
@@ -233,7 +239,10 @@ mod tests {
         // # Test case #2.
         // Burn with value equal to 0
         {
-            assert_ok!(funcs::burn(&mut map, &mut total_supply, dave(), 0.into()), false);
+            assert_ok!(
+                funcs::burn(&mut map, &mut total_supply, dave(), 0.into()),
+                false
+            );
         }
 
         // # Test case #3.
