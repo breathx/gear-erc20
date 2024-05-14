@@ -1,6 +1,7 @@
 use self::utils::Role;
 use crate::services;
 use crate::services::admin::roles::{FungibleAdmin, FungibleBurner, FungibleMinter};
+use crate::ServiceOf;
 use core::marker::PhantomData;
 use gstd::{exec, msg, String};
 use gstd::{ActorId, Decode, Encode, ToString, TypeInfo, Vec};
@@ -39,14 +40,14 @@ pub enum Event {
 
 pub struct Service<X> {
     roles_service: services::roles::GstdDrivenService,
-    aggregated_service: services::aggregated::GstdDrivenService,
+    pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
     _phantom: PhantomData<X>,
 }
 
 impl<X: EventTrigger<Event>> Service<X> {
     pub fn seed(
         mut roles_service: services::roles::GstdDrivenService,
-        aggregated_service: services::aggregated::GstdDrivenService,
+        pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
         admin: ActorId,
         description: String,
         external_links: ExternalLinks,
@@ -84,7 +85,7 @@ impl<X: EventTrigger<Event>> Service<X> {
 
         Self {
             roles_service,
-            aggregated_service,
+            pausable_service,
             _phantom: PhantomData,
         }
     }
@@ -97,17 +98,17 @@ where
 {
     pub fn new(
         roles_service: services::roles::GstdDrivenService,
-        aggregated_service: services::aggregated::GstdDrivenService,
+        pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
     ) -> Self {
         Self {
             roles_service,
-            aggregated_service,
+            pausable_service,
             _phantom: PhantomData,
         }
     }
 
     pub fn mint(&mut self, to: sails_rtl::ActorId, value: U256) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         self.roles_service
             .ensure_has_role::<FungibleMinter>(msg::source());
@@ -130,7 +131,7 @@ where
     }
 
     pub fn burn(&mut self, from: sails_rtl::ActorId, value: U256) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         self.roles_service
             .ensure_has_role::<FungibleBurner>(msg::source());
@@ -171,13 +172,13 @@ where
     }
 
     pub fn allowances_reserve(&mut self, additional: u32) -> () {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         funcs::allowances_reserve(AllowancesStorage::as_mut(), additional as usize)
     }
 
     pub fn balances_reserve(&mut self, additional: u32) -> () {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         funcs::balances_reserve(BalancesStorage::as_mut(), additional as usize)
     }
@@ -208,7 +209,7 @@ where
     }
 
     pub fn grant_role(&mut self, to: sails_rtl::ActorId, role: Role) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         services::utils::panicking(|| -> Result<bool, services::roles::Error> {
             self.roles_service
@@ -225,7 +226,7 @@ where
     }
 
     pub fn remove_role(&mut self, from: sails_rtl::ActorId, role: Role) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| self.pausable_service.ensure_unpaused());
 
         services::utils::panicking(|| -> Result<bool, services::roles::Error> {
             self.roles_service

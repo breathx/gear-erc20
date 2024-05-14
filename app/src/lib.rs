@@ -18,15 +18,16 @@ pub struct Program(());
 #[gprogram]
 impl Program {
     pub fn new(init: Init) -> Self {
+        let result = Self(());
         let roles_service = roles::GstdDrivenService::seed();
         let erc20_service = <erc20::GstdDrivenService>::seed(init.name, init.symbol, init.decimals);
         let pausable_service =
             <pausable::GstdDrivenService>::seed(roles_service.clone(), init.admin_id);
         let aggregated_service =
-            <aggregated::GstdDrivenService>::seed(erc20_service, pausable_service);
+            <aggregated::GstdDrivenService>::seed(erc20_service, result.pausable());
         <admin::GstdDrivenService>::seed(
             roles_service,
-            aggregated_service,
+            result.pausable(),
             init.admin_id,
             init.description,
             init.external_links,
@@ -36,22 +37,14 @@ impl Program {
         Self(())
     }
 
-    #[groute("erc20")]
     pub fn admin(&self) -> admin::GstdDrivenService {
-        admin::GstdDrivenService::new(self.roles(), self.aggregated())
+        admin::GstdDrivenService::new(self.roles(), self.pausable())
     }
 
-    fn aggregated(&self) -> aggregated::GstdDrivenService {
+    #[groute("erc20")]
+    pub fn aggregated(&self) -> aggregated::GstdDrivenService {
         aggregated::GstdDrivenService::new(self.erc20(), self.pausable())
     }
-
-    // pub fn pausable(&self) -> pausable::GstdDrivenService {
-    //     pausable::GstdDrivenService::new(self.roles())
-    // }
-
-    // pub fn roles(&self) -> roles::GstdDrivenService {
-    //     roles::GstdDrivenService::new()
-    // }
 
     fn erc20(&self) -> erc20::GstdDrivenService {
         erc20::GstdDrivenService::new()
@@ -59,7 +52,7 @@ impl Program {
     fn roles(&self) -> roles::GstdDrivenService {
         roles::GstdDrivenService::new()
     }
-    fn pausable(&self) -> pausable::GstdDrivenService {
+    pub fn pausable(&self) -> pausable::GstdDrivenService {
         pausable::GstdDrivenService::new(self.roles())
     }
 }
