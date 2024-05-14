@@ -110,14 +110,6 @@ impl<X: EventTrigger<Event>> Service<X> {
 
             Ok(res)
         });
-
-        if mutated {
-            services::utils::deposit_event(Event::RoleGranted {
-                actor: actor.into(),
-                role: T::name().to_string(),
-            })
-        }
-
         mutated
     }
 

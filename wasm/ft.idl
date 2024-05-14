@@ -1,0 +1,58 @@
+type Init = struct {
+  name: str,
+  symbol: str,
+  decimals: u8,
+  description: str,
+  external_links: ExternalLinks,
+  initial_supply: u256,
+  max_supply: u256,
+  admin_id: ActorId,
+};
+
+type ExternalLinks = struct {
+  image: str,
+  website: opt str,
+  telegram: opt str,
+  twitter: opt str,
+  discord: opt str,
+  tokenomics: opt str,
+};
+
+type ActorId = struct {
+  [u8, 32],
+};
+
+type Role = enum {
+  Admin,
+  Burner,
+  Minter,
+};
+
+constructor {
+  New : (init: Init);
+};
+
+service Erc20 {
+  AllowancesReserve : (additional: u32) -> null;
+  BalancesReserve : (additional: u32) -> null;
+  Burn : (from: actor_id, value: u256) -> bool;
+  GrantRole : (to: actor_id, role: Role) -> bool;
+  Kill : (inheritor: actor_id) -> null;
+  Mint : (to: actor_id, value: u256) -> bool;
+  RemoveRole : (from: actor_id, role: Role) -> bool;
+  TransferToUsers : (to: vec actor_id, value: u256) -> bool;
+  query Allowances : (skip: u32, take: u32) -> vec struct { struct { actor_id, actor_id }, u256 };
+  query Balances : (skip: u32, take: u32) -> vec struct { actor_id, u256 };
+  query Description : () -> str;
+  query ExternalLinks : () -> ExternalLinks;
+  query MapsData : () -> struct { struct { u32, u32 }, struct { u32, u32 } };
+  query MaxSupply : () -> u256;
+
+  events {
+    Minted: struct { to: actor_id, value: u256 };
+    Burned: struct { from: actor_id, value: u256 };
+    Killed: struct { inheritor: actor_id };
+    TransferredToUsers: struct { from: actor_id, to: vec actor_id, value: u256 };
+  }
+};
+

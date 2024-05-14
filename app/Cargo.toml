@@ -1,7 +1,6 @@
 [package]
 name = "erc20"
 version.workspace = true
-authors.workspace = true
 edition.workspace = true
 license.workspace = true
 
@@ -11,12 +10,16 @@ primitive-types.workspace = true
 log.workspace = true
 sails-macros.workspace = true
 sails-rtl.workspace = true
-sails-idl-meta.workspace = true
 parity-scale-codec.workspace = true
 scale-info.workspace = true
 
 [dev-dependencies]
 env_logger.workspace = true
+gtest.workspace = true
 
 [build-dependencies]
 gwasm-builder.workspace = true
+
+[features]
+debug = ["gstd/debug"]
+
