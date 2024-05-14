@@ -36,10 +36,6 @@ impl<X: EventTrigger<Event>> Service<X> {
             _phantom: PhantomData,
         }
     }
-
-    pub fn ensure_unpaused(&self) -> Result<(), Error> {
-        (!self.is_paused()).then_some(()).ok_or(Error::Paused)
-    }
 }
 
 #[gservice]
@@ -56,6 +52,10 @@ where
 
     pub fn is_paused(&self) -> bool {
         StateStorage::as_ref().paused()
+    }
+
+    pub fn ensure_unpaused(&self) -> Result<(), Error> {
+        (!self.is_paused()).then_some(()).ok_or(Error::Paused)
     }
 
     pub fn pause(&mut self) -> bool {

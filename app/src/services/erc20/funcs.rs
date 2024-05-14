@@ -109,6 +109,7 @@ pub fn transfer_from(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::erc20::funcs;
     use utils::*;
 
     // TODO (breathx): force macros to assert storage noop.

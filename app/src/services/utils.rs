@@ -14,12 +14,11 @@ pub fn panic(err: impl Debug) -> ! {
     ext::panic(&format!("{err:?}"))
 }
 
-pub fn deposit_event<E: Encode + StaticTypeInfo>(event: E) -> ! {
+pub fn deposit_event<E: Encode + StaticTypeInfo>(event: E) {
     if GStdEventTrigger::<E>::new().trigger(event).is_err() {
         panic("Failed to deposit event");
     }
-
-    exec::leave()
+    // exec::leave()
 }
 
 #[macro_export]

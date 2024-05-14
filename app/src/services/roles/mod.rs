@@ -46,24 +46,6 @@ impl<X> Service<X> {
         Self(PhantomData)
     }
 
-    pub fn register_role<T: Role>(&mut self) -> Result<()> {
-        let role_name = T::name();
-        let role_type_id = TypeId::of::<T>();
-
-        let registry = RolesRegistryStorage::as_mut();
-
-        let Some(&type_id) = registry.get(&role_name) else {
-            registry.insert(role_name, role_type_id);
-            return Ok(());
-        };
-
-        if type_id != role_type_id {
-            Err(Error::DuplicateRole)
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn ensure_role_registered<T: Role>(&self) -> Result<()> {
         let role_name = T::name();
         let role_type_id = TypeId::of::<T>();
@@ -110,14 +92,6 @@ impl<X: EventTrigger<Event>> Service<X> {
 
             Ok(res)
         });
-
-        if mutated {
-            services::utils::deposit_event(Event::RoleGranted {
-                actor: actor.into(),
-                role: T::name().to_string(),
-            })
-        }
-
         mutated
     }
 
@@ -138,6 +112,24 @@ impl<X: EventTrigger<Event>> Service<X> {
         }
 
         mutated
+    }
+
+    pub fn register_role<T: Role>(&mut self) -> Result<()> {
+        let role_name = T::name();
+        let role_type_id = TypeId::of::<T>();
+
+        let registry = RolesRegistryStorage::as_mut();
+
+        let Some(&type_id) = registry.get(&role_name) else {
+            registry.insert(role_name, role_type_id);
+            return Ok(());
+        };
+
+        if type_id != role_type_id {
+            Err(Error::DuplicateRole)
+        } else {
+            Ok(())
+        }
     }
 }
 
