@@ -10,6 +10,7 @@ pub enum Error {
     InsufficientAllowance,
     InsufficientBalance,
     NumericOverflow,
+    Underflow,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Decode, Encode, TypeInfo)]

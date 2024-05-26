@@ -18,7 +18,9 @@ service Admin {
   RemoveRole : (from: actor_id, role: Role) -> bool;
   query Allowances : (skip: u32, take: u32) -> vec struct { struct { actor_id, actor_id }, u256 };
   query Balances : (skip: u32, take: u32) -> vec struct { actor_id, u256 };
+  query HasRole : (actor: actor_id, role: str) -> bool;
   query MapsData : () -> struct { struct { u32, u32 }, struct { u32, u32 } };
+  query Roles : () -> vec str;
 
   events {
     Minted: struct { to: actor_id, value: u256 };
@@ -53,16 +55,6 @@ service Pausable {
   events {
     Paused;
     Unpaused;
-  }
-};
-
-service Roles {
-  query HasRole : (actor: actor_id, role: str) -> bool;
-  query Roles : () -> vec str;
-
-  events {
-    RoleGranted: struct { actor: actor_id, role: str };
-    RoleRemoved: struct { actor: actor_id, role: str };
   }
 };
 

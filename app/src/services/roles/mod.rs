@@ -1,8 +1,8 @@
 use crate::services;
 use core::{any::TypeId, marker::PhantomData};
 use gstd::{ActorId, Decode, Encode, String, ToString, TypeInfo, Vec};
-use sails_macros::gservice;
 use sails_rtl::gstd::events::{EventTrigger, GStdEventTrigger};
+use sails_rtl::gstd::gservice;
 use storage::{RolesRegistryStorage, RolesStorage};
 
 pub mod funcs;
@@ -110,14 +110,6 @@ impl<X: EventTrigger<Event>> Service<X> {
 
             Ok(res)
         });
-
-        if mutated {
-            services::utils::deposit_event(Event::RoleGranted {
-                actor: actor.into(),
-                role: T::name().to_string(),
-            })
-        }
-
         mutated
     }
 
