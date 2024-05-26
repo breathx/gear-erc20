@@ -1,8 +1,8 @@
 use crate::services::{self, pausable::roles::PauseAdmin, roles::storage::RolesStorage};
 use core::marker::PhantomData;
 use gstd::{msg, ActorId, Decode, Encode, String, TypeInfo, Vec};
-use sails_macros::gservice;
 use sails_rtl::gstd::events::{EventTrigger, GStdEventTrigger};
+use sails_rtl::gstd::gservice;
 use storage::StateStorage;
 
 pub use utils::*;

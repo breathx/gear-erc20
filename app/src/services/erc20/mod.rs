@@ -5,8 +5,8 @@ use crate::services;
 use core::{cmp::Ordering, fmt::Debug, marker::PhantomData};
 use gstd::{ext, format, msg, ActorId, Decode, Encode, String, TypeInfo, Vec};
 use primitive_types::U256;
-use sails_macros::gservice;
 use sails_rtl::gstd::events::{EventTrigger, GStdEventTrigger};
+use sails_rtl::gstd::gservice;
 use storage::{AllowancesStorage, BalancesStorage, MetaStorage, TotalSupplyStorage};
 
 pub use utils::*;

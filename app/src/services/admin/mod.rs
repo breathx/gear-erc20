@@ -1,14 +1,14 @@
 use self::utils::Role;
-use crate::services;
 use crate::services::admin::roles::{FungibleAdmin, FungibleBurner, FungibleMinter};
+use crate::{services, ServiceOf};
 use core::marker::PhantomData;
 use gstd::{exec, msg, String};
 use gstd::{ActorId, Decode, Encode, ToString, TypeInfo, Vec};
 use primitive_types::U256;
-use sails_macros::gservice;
 use sails_rtl::gstd::events::{EventTrigger, GStdEventTrigger};
+use sails_rtl::gstd::gservice;
 
-use super::erc20::storage::{AllowancesStorage, BalancesStorage};
+use super::erc20::storage::{AllowancesStorage, BalancesStorage, TotalSupplyStorage};
 
 pub mod funcs;
 
@@ -32,14 +32,14 @@ pub enum Event {
 // TODO (breathx): once supported in sails impl Clone here
 pub struct Service<X> {
     roles_service: services::roles::GstdDrivenService,
-    aggregated_service: services::aggregated::GstdDrivenService,
+    pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
     _phantom: PhantomData<X>,
 }
 
 impl<X: EventTrigger<Event>> Service<X> {
     pub fn seed(
         mut roles_service: services::roles::GstdDrivenService,
-        aggregated_service: services::aggregated::GstdDrivenService,
+        pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
         admin: ActorId,
     ) -> Self {
         roles_service.register_role::<FungibleAdmin>();
@@ -51,7 +51,7 @@ impl<X: EventTrigger<Event>> Service<X> {
 
         Self {
             roles_service,
-            aggregated_service,
+            pausable_service,
             _phantom: PhantomData,
         }
     }
@@ -64,23 +64,34 @@ where
 {
     pub fn new(
         roles_service: services::roles::GstdDrivenService,
-        aggregated_service: services::aggregated::GstdDrivenService,
+        pausable_service: ServiceOf<services::pausable::GstdDrivenService>,
     ) -> Self {
         Self {
             roles_service,
-            aggregated_service,
+            pausable_service,
             _phantom: PhantomData,
         }
     }
 
     pub fn mint(&mut self, to: sails_rtl::ActorId, value: U256) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
-        self.roles_service
-            .ensure_has_role::<FungibleMinter>(msg::source());
-
-        let mutated =
-            services::utils::panicking(|| funcs::mint(BalancesStorage::as_mut(), to.into(), value));
+        services::utils::panicking(|| {
+            self.roles_service
+                .ensure_has_role::<FungibleMinter>(msg::source())
+        });
+        let mutated = services::utils::panicking(|| {
+            funcs::mint(
+                BalancesStorage::as_mut(),
+                TotalSupplyStorage::as_mut(),
+                to.into(),
+                value,
+            )
+        });
 
         if mutated {
             services::utils::deposit_event(Event::Minted { to, value });
@@ -90,13 +101,24 @@ where
     }
 
     pub fn burn(&mut self, from: sails_rtl::ActorId, value: U256) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
-        self.roles_service
-            .ensure_has_role::<FungibleBurner>(msg::source());
+        services::utils::panicking(|| {
+            self.roles_service
+                .ensure_has_role::<FungibleBurner>(msg::source())
+        });
 
         let mutated = services::utils::panicking(|| {
-            funcs::burn(BalancesStorage::as_mut(), from.into(), value)
+            funcs::burn(
+                BalancesStorage::as_mut(),
+                TotalSupplyStorage::as_mut(),
+                from.into(),
+                value,
+            )
         });
 
         if mutated {
@@ -108,13 +130,21 @@ where
 
     // TODO (sails): consider `#[panicking]` and then it expect Result in return type, automatically wrapping closure
     pub fn allowances_reserve(&mut self, additional: u32) -> () {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
         funcs::allowances_reserve(AllowancesStorage::as_mut(), additional as usize)
     }
 
     pub fn balances_reserve(&mut self, additional: u32) -> () {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
         funcs::balances_reserve(BalancesStorage::as_mut(), additional as usize)
     }
@@ -143,9 +173,20 @@ where
             .map(|(id, v)| (id.into(), v.into()))
             .collect()
     }
+    pub fn has_role(&self, actor: sails_rtl::ActorId, role: String) -> bool {
+        self.roles_service.has_role(actor, role)
+    }
+
+    pub fn roles(&self) -> Vec<String> {
+        self.roles_service.roles()
+    }
 
     pub fn grant_role(&mut self, to: sails_rtl::ActorId, role: Role) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
         services::utils::panicking(|| -> Result<bool, services::roles::Error> {
             self.roles_service
@@ -162,7 +203,11 @@ where
     }
 
     pub fn remove_role(&mut self, from: sails_rtl::ActorId, role: Role) -> bool {
-        services::utils::panicking(|| self.aggregated_service.pausable_service.ensure_unpaused());
+        services::utils::panicking(|| {
+            (!self.pausable_service.is_paused())
+                .then_some(())
+                .ok_or(services::pausable::Error::Paused)
+        });
 
         services::utils::panicking(|| -> Result<bool, services::roles::Error> {
             self.roles_service

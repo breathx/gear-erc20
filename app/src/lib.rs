@@ -5,22 +5,25 @@
 
 // TODO (sails): consider sub-services inside (for observing state, for example)
 // TODO (sails): rename gstd event depositor here to use `notifier`::`Notifier`/`Informer`.
-use gstd::{msg, String};
-use sails_macros::{gprogram, groute};
+use gstd::{msg, ActorId, String};
+use sails_rtl::gstd::{gprogram, groute};
 use services::{admin, aggregated, erc20, pausable, roles};
 
 pub mod services;
 
-pub struct BreathxProgram(());
+type ServiceOf<T> = <T as sails_rtl::gstd::services::Service>::Exposure;
+
+pub struct Program(());
 
 // TODO (sails): allow to import all necessary macros at once (gprogram, grout, etc).
-// TODO (sails): stop forcing deriving default on `BreathxProgram`.
+// TODO (sails): stop forcing deriving default on `Program`.
 #[gprogram]
-impl BreathxProgram {
+impl Program {
     // TODO (sails): fix arguments are unused.
     // TODO (sails): `#[gconstructor]`
     pub fn new(name: String, symbol: String, decimals: u8) -> Self {
         let source = msg::source();
+        let program = Self(());
 
         let roles_service = roles::GstdDrivenService::seed();
 
@@ -29,16 +32,15 @@ impl BreathxProgram {
         let pausable_service = <pausable::GstdDrivenService>::seed(roles_service.clone(), source);
 
         let aggregated_service =
-            <aggregated::GstdDrivenService>::seed(erc20_service, pausable_service);
+            <aggregated::GstdDrivenService>::seed(erc20_service, program.pausable());
 
-        <admin::GstdDrivenService>::seed(roles_service, aggregated_service, source);
+        <admin::GstdDrivenService>::seed(roles_service, program.pausable(), source);
 
         Self(())
     }
 
-    #[groute]
     pub fn admin(&self) -> admin::GstdDrivenService {
-        admin::GstdDrivenService::new(self.roles(), self.aggregated())
+        admin::GstdDrivenService::new(self.roles(), self.pausable())
     }
 
     // TODO (sails): service Erc20: Pausable [pipeline]
@@ -48,13 +50,11 @@ impl BreathxProgram {
         aggregated::GstdDrivenService::new(self.erc20(), self.pausable())
     }
 
-    #[groute]
     pub fn pausable(&self) -> pausable::GstdDrivenService {
         pausable::GstdDrivenService::new(self.roles())
     }
 
-    #[groute]
-    pub fn roles(&self) -> roles::GstdDrivenService {
+    fn roles(&self) -> roles::GstdDrivenService {
         roles::GstdDrivenService::new()
     }
 
